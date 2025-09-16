@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GK Quiz</title>
+  <style>
+    /* Reset & base */
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(to top, #a0e9ff, #81d4fa, #b2ebf2);
+      overflow-x: hidden;
+    }
+
+    /* Navbar */
+    .navbar {
+      position: fixed;
+      top: 0;
+      width: 100%;
+      height: 60px;
+      background-color: #0277bd;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 15px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      z-index: 1000;
+      user-select: none;
+      overflow-x: hidden;
+    }
+
+    .navbar .name,
+    .navbar .title {
+      font-size: 1.3rem;
+      font-weight: 600;
+      letter-spacing: 1px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 45vw;
+    }
+
+    /* Bubbles */
+    .bubble {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      animation: floatUp 25s linear infinite;
+      z-index: 0;
+    }
+
+    .bubble1 { width: 80px; height: 80px; left: 10%; bottom: -100px; animation-delay: 0s; }
+    .bubble2 { width: 60px; height: 60px; left: 50%; bottom: -80px; animation-delay: 3s; }
+    .bubble3 { width: 100px; height: 100px; left: 80%; bottom: -120px; animation-delay: 5s; }
+    .bubble4 { width: 50px; height: 50px; left: 30%; bottom: -90px; animation-delay: 8s; }
+
+    @keyframes floatUp {
+      0% { transform: translateY(0) scale(1); opacity: 0.5; }
+      100% { transform: translateY(-120vh) scale(1.2); opacity: 0; }
+    }
+
+    /* Waves at the bottom */
+    .wave {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 200%;
+      height: 200px;
+      background: url('https://i.imgur.com/ax7K3oF.png') repeat-x;
+      background-size: contain;
+      animation: wave 15s linear infinite;
+      opacity: 0.4;
+      z-index: 0;
+    }
+
+    @keyframes wave {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
+    }
+
+    /* Quiz Container */
+    .quiz-container {
+      position: relative;
+      max-width: 600px;
+      margin: 100px auto 50px;
+      padding: 30px 25px;
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 15px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      text-align: center;
+      z-index: 10;
+      animation: fadeIn 1.2s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .question {
+      font-size: 1.4em;
+      color: #333;
+      margin-bottom: 20px;
+    }
+
+    .options {
+      list-style: none;
+      padding: 0;
+    }
+
+    .options li {
+      margin: 12px 0;
+    }
+
+    .options button {
+      width: 100%;
+      padding: 12px;
+      font-size: 1em;
+      border: 2px solid #29b6f6;
+      border-radius: 8px;
+      background-color: #e1f5fe;
+      color: #01579b;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    .options button:hover {
+      background-color: #b3e5fc;
+      transform: scale(1.02);
+    }
+
+    .result {
+      margin-top: 20px;
+      font-weight: bold;
+      font-size: 1.2em;
+      color: #00796b;
+    }
+
+    .btn-next {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 1em;
+      background-color: #4fc3f7;
+      border: none;
+      color: white;
+      border-radius: 6px;
+      cursor: pointer;
+      display: none;
+    }
+
+    .btn-next:hover {
+      background-color: #0288d1;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <div class="navbar">
+    <div class="name">ABHISHEK GALATAGI</div>
+    <div class="title">GK QUIZ</div>
+  </div>
+
+  <!-- Bubbles -->
+  <div class="bubble bubble1"></div>
+  <div class="bubble bubble2"></div>
+  <div class="bubble bubble3"></div>
+  <div class="bubble bubble4"></div>
+
+  <!-- Wave animation -->
+  <div class="wave"></div>
+
+  <!-- Quiz box -->
+  <div class="quiz-container">
+    <div id="question" class="question">Loading question...</div>
+    <ul id="options" class="options"></ul>
+    <div id="result" class="result"></div>
+    <button id="nextBtn" class="btn-next">Next Question</button>
+  </div>
+
+  <script>
+    const questionEl = document.getElementById("question");
+    const optionsEl = document.getElementById("options");
+    const resultEl = document.getElementById("result");
+    const nextBtn = document.getElementById("nextBtn");
+
+    let questionsPool = [];
+    let currentQuestion = null;
+
+    async function fetchQuestions() {
+      try {
+        const resp = await fetch('https://the-trivia-api.com/v2/questions?limit=30&categories=geography,sport_and_leisure,politics,general_knowledge');
+        const data = await resp.json();
+        questionsPool = data;
+        loadNextQuestion();
+      } catch (err) {
+        console.error("Error fetching questions", err);
+        questionEl.textContent = "Error loading. Please refresh.";
+      }
+    }
+
+    function loadNextQuestion() {
+      resultEl.textContent = "";
+      nextBtn.style.display = "none";
+      optionsEl.innerHTML = "";
+
+      if (questionsPool.length === 0) {
+        questionEl.textContent = "🎉 You've completed the quiz!";
+        return;
+      }
+
+      const q = questionsPool.shift();
+      currentQuestion = q;
+      questionEl.textContent = q.question.text;
+
+      const allOptions = [...q.incorrectAnswers, q.correctAnswer];
+      shuffleArray(allOptions);
+
+      allOptions.forEach(option => {
+        const li = document.createElement("li");
+        const btn = document.createElement("button");
+        btn.textContent = option;
+        btn.onclick = () => handleAnswer(option, btn);
+        li.appendChild(btn);
+        optionsEl.appendChild(li);
+      });
+    }
+
+    function handleAnswer(selected, btn) {
+      const buttons = optionsEl.querySelectorAll("button");
+      buttons.forEach(b => b.disabled = true);
+
+      if (selected === currentQuestion.correctAnswer) {
+        btn.style.backgroundColor = "#66bb6a";
+        resultEl.textContent = "✅ Correct!";
+      } else {
+        btn.style.backgroundColor = "#ef5350";
+        resultEl.textContent = `❌ Correct answer: ${currentQuestion.correctAnswer}`;
+        buttons.forEach(b => {
+          if (b.textContent === currentQuestion.correctAnswer) {
+            b.style.backgroundColor = "#66bb6a";
+          }
+        });
+      }
+
+      nextBtn.style.display = "inline-block";
+    }
+
+    nextBtn.addEventListener("click", () => {
+      loadNextQuestion();
+    });
+
+    function shuffleArray(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+    }
+
+    // Start the quiz
+    fetchQuestions();
+  </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
